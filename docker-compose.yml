@@ -1,0 +1,47 @@
+services:
+    frontend:
+        container_name: "Modul-Graph-Frontend"
+        image: ghcr.io/modul-graph/modul_graph_react_frontend:latest
+        ports:
+            - "${MODUL_GRAPH_FRONTEND_PORT:-3000}:3000"
+        environment:
+            NEXT_PUBLIC_API_URL: ${MODUL_GRAPH_NEXT_PUBLIC_API_URL:-http://localhost:3001/api/v1}
+            NEXT_API_URL: ${MODUL_GRAPH_NEXT_API_URL:-http://backend:8080/api/v1}
+            NODE_ENV: PRODUCTION
+        depends_on:
+            backend:
+                condition: service_healthy
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
+    backend: 
+        container_name: "Modul-Graph-Backend"
+        image: ghcr.io/modul-graph/modul_graph:latest
+        ports:
+            - "${MODUL_GRAPH_BACKEND_PORT:-3001}:8080"
+        environment:
+            NEO4J_URI: "bolt://neo4j:${MODUL_GRAPH_NEO4J_PASSWORD:?Missing neo4j password!}@neo4j:7687" # Make sure username/password matched neo4j config
+        depends_on:
+            neo4j:
+                condition: service_healthy
+    neo4j:
+        container_name: "Modul-Graph-Neo4J"
+        # The image to use
+        image: neo4j:5
+        # mounting a named volume to the container to track db data
+        volumes:
+            - neo4j_data:/data/
+        environment:
+            NEO4J_AUTH: "neo4j/${MODUL_GRAPH_NEO4J_PASSWORD:?Missing neo4j password!}" #Username cannot be changed. See: https://neo4j.com/docs/operations-manual/current/docker/introduction/#docker-auth
+            NEO4J_dbms_security_auth__minimum__password__length: 8
+            NEO4J_ACCEPT_LICENSE_AGREEMENT: "yes"
+        healthcheck:
+            test: [ "CMD", "neo4j", "status" ]
+            start_period: 10s
+            interval: 10s
+            timeout: 1s
+            retries: 10
+volumes:
+  neo4j_data:
+
+
+        
